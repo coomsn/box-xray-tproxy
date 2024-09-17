@@ -1,0 +1,568 @@
+{
+  "log": {
+    "level": "debug",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns_remote",
+        "address": "h3://8.8.4.4/dns-query",
+        "detour": "🐢Oracle"
+      },
+      {
+        "tag": "dns_local",
+        "address": "h3://1.0.0.1/dns-query",
+        "detour": "out-direct"
+      },
+      {
+        "tag": "dns_ali",
+        "address": "h3://223.6.6.6/dns-query",
+        "detour": "out-direct"
+      },
+      {
+        "tag": "dns_success",
+        "address": "rcode://success"
+      },
+      {
+        "tag": "dns_fakeip",
+        "address": "fakeip"
+      }
+    ],
+    "rules": [
+      {
+        "outbound": "any",
+        "server": "dns_ali"
+      },
+      {
+        "rule_set": "geosite-category-ads-all",
+        "server": "dns_success",
+        "disable_cache": true
+      },
+      {
+        "clash_mode": "direct",
+        "server": "dns_local"
+      },
+      {
+        "clash_mode": "global",
+        "server": "dns_remote"
+      },
+      {
+        "domain_regex": "^.*mtalk[.]google[.]com$",
+        "server": "dns_local"
+      },
+      {
+        "domain_regex": [
+          "^.*[.]googleapis[.]cn$",
+          "^.*[.]googleapis[.]com$",
+          "^.*[.]xn--ngstr-lra8j[.]com$"
+        ],
+        "server": "dns_remote"
+      },
+      {
+        "query_type": [
+          "A",
+          "AAAA"
+        ],
+        "rule_set": [
+          "geosite-google",
+          "geosite-google@cn",
+          "geosite-bing",
+          "geosite-microsoft",
+          "geosite-bing@cn",
+          "geosite-microsoft@cn",
+          "geosite-telegram",
+          "geosite-openai",
+          "geosite-github",
+          "geosite-geolocation-!cn"
+        ],
+        "server": "dns_fakeip"
+      },
+      {
+        "rule_set": [
+          "geosite-private",
+          "geosite-cn"
+        ],
+        "server": "dns_local"
+      },
+      {
+        "inbound": "tproxy-in",
+        "server": "dns_local"
+      }
+    ],
+    "fakeip": {
+      "enabled": true,
+      "inet4_range": "198.18.0.0/15",
+      "inet6_range": "fc00::/18",
+      "exclude_rule": {}
+    },
+    "strategy": "prefer_ipv4",
+    "independent_cache": true
+  },
+  "inbounds": [
+    {
+      "type": "tproxy",
+      "tag": "tproxy-in",
+      "listen": "::",
+      "listen_port": 2048,
+      "tcp_fast_open": true,
+      "udp_fragment": true,
+      "sniff": true
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "🐢Oracle",
+      "outbounds": [
+        "m4_hys2",
+        "m5_hys2"
+      ],
+      "providers": "Reality",
+      "interrupt_exist_connections": true
+    },
+    {
+      "type": "hysteria2",
+      "tag": "m4_hys2",
+      "server": "m4.acstudycn.eu.org",
+      "server_port": 8445,
+      "up_mbps": 50,
+      "down_mbps": 200,
+      "obfs": {
+        "type": "salamander",
+        "password": "cry_me_a_r1ver"
+      },
+      "password": "0ab68df6-bb92-4a79-b501-529b56018b5e",
+      "tls": {
+        "enabled": true,
+        "server_name": "m4.acstudycn.eu.org",
+        "alpn": "h3",
+        "min_version": "1.3",
+        "certificate_path": "/data/adb/box_lite/confs/certificate/accn.pem",
+        "ech": {
+          "enabled": true,
+          "pq_signature_schemes_enabled": true,
+          "config_path": "/data/adb/box_lite/confs/certificate/ech.config"
+        }
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "m5_hys2",
+      "server": "m5.acstudycn.eu.org",
+      "server_port": 8445,
+      "up_mbps": 50,
+      "down_mbps": 200,
+      "obfs": {
+        "type": "salamander",
+        "password": "cry_me_a_r1ver"
+      },
+      "password": "0ab68df6-bb92-4a79-b501-529b56018b5e",
+      "tls": {
+        "enabled": true,
+        "server_name": "m5.acstudycn.eu.org",
+        "alpn": "h3",
+        "min_version": "1.3",
+        "certificate_path": "/data/adb/box_lite/confs/certificate/accn.pem",
+        "ech": {
+          "enabled": true,
+          "pq_signature_schemes_enabled": true,
+          "config_path": "/data/adb/box_lite/confs/certificate/ech.config"
+        }
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "out-direct"
+    },
+    {
+      "type": "block",
+      "tag": "out-blackhole"
+    },
+    {
+      "type": "dns",
+      "tag": "out-dns"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          {
+            "protocol": "dns"
+          },
+          {
+            "port": 53
+          }
+        ],
+        "outbound": "out-dns"
+      },
+      {
+        "rule_set": "geosite-category-ads-all",
+        "outbound": "out-blackhole"
+      },
+      {
+        "clash_mode": "direct",
+        "outbound": "out-direct"
+      },
+      {
+        "clash_mode": "global",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": "geosite-openai",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "domain_regex": [
+          "^.*[.]googleapis[.]cn$",
+          "^.*[.]googleapis[.]com$",
+          "^.*[.]xn--ngstr-lra8j[.]com$"
+        ],
+        "outbound": "🐢Oracle"
+      },
+      {
+        "domain_regex": "^.*mtalk[.]google[.]com$",
+        "outbound": "out-direct"
+      },
+      {
+        "rule_set": [
+          "geosite-google@cn",
+          "geosite-bing@cn",
+          "geosite-microsoft@cn"
+        ],
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": "geosite-google",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": "geosite-bing",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": "geosite-microsoft",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": "geosite-telegram",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": "geosite-github",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": "geosite-geolocation-!cn",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": [
+          "geosite-private",
+          "geosite-cn"
+        ],
+        "outbound": "out-direct"
+      },
+      {
+        "rule_set": "geoip-telegram",
+        "outbound": "🐢Oracle"
+      },
+      {
+        "rule_set": [
+          "geoip-cn",
+          "geoip-tw",
+          "geoip-hk"
+        ],
+        "outbound": "out-direct"
+      }
+    ],
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": "geosite-facebook",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-facebook.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/facebook.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-google",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-google.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-google@cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-google@cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google@cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-telegram",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-telegram.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/telegram.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-twitter",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-twitter.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/twitter.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-netflix",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-netflix.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/netflix.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-tumblr",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-tumblr.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/tumblr.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-geolocation-!cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-geolocation-!cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-!cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-steam",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-steam.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/steam.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-discord",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-discord.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/discord.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-openai",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-openai.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/openai.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-github",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-github.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/github.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-microsoft",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-microsoft.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/microsoft.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-microsoft@cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-microsoft@cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/microsoft@cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-category-ads-all",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-category-ads-all.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ads-all.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-private",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-private.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/private.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-youtube",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-youtube.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/youtube.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-reddit",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-reddit.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/reddit.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-bing",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-bing.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/bing.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-bing@cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-bing@cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/bing@cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-tld-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-tld-cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/tld-cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-netease",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-netease.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/netease.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-tencent",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-tencent.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/tencent.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-geolocation-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-geolocation-cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-cn.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-tw",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-tw.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/tw.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-hk",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-hk.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/hk.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-telegram",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-telegram.srs",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/telegram.srs",
+        "download_detour": "m4_hys2",
+        "update_interval": "24h0m0s"
+      }
+    ],
+    "final": "🐢Oracle",
+    "find_process": true,
+    "auto_detect_interface": true
+  },
+  "outbound_providers": [
+    {
+      "type": "local",
+      "path": "/data/adb/box_lite/confs/providers/reality.txt",
+      "tag": "Reality",
+      "healthcheck_interval": "1h0m0s"
+    }
+  ],
+  "experimental": {
+    "cache_file": {
+      "enabled": true
+    },
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "external_ui": "/data/adb/box_lite/board",
+      "external_ui_download_url": "https://github.com/MetaCubeX/Yacd-meta/archive/gh-pages.zip",
+      "external_ui_download_detour": "m4_hys2"
+    }
+  }
+}

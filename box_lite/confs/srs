@@ -1,0 +1,148 @@
+#!/system/bin/sh
+scripts=$(realpath $0)
+scripts_dir=$(dirname ${scripts})
+parent_dir=$(dirname ${scripts_dir})
+
+normal=$(printf '\033[0m'); green=$(printf '\033[0;32m'); red=$(printf '\033[91m')
+
+export PATH="/data/adb/magisk:/data/adb/ksu/bin:$PATH:/system/bin"
+
+sitename=(facebook google google@cn telegram twitter netflix tumblr geolocation-!cn steam discord openai github microsoft microsoft@cn category-ads-all private youtube reddit bing bing@cn cn tld-cn netease tencent geolocation-cn)
+
+ipname=(cn tw hk telegram)
+
+[ ! -d "${scripts_dir}/rules" ] && mkdir ${scripts_dir}/rules
+
+MetaCubeX() {
+for site_name in "${sitename[@]}"; do
+  curl -L -o geosite-"${site_name}".srs https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/${site_name}.srs
+  echo "${green}geosite-${site_name}.srs下载完毕${normal}"
+config_content+="      {
+        \"type\": \"local\",
+        \"tag\": \"geosite-${site_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geosite-${site_name}.srs\"
+      },\n"
+      
+config_content_remote+="      {
+        \"type\": \"remote\",
+        \"tag\": \"geoip-${site_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geosite-${site_name}.srs\",
+        \"url\": \"https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/${site_name}.srs\",
+        \"download_detour\": \"m4_hys2\",
+        \"update_interval\": \"24h0m0s\"
+      },\n"
+done
+
+for ip_name in "${ipname[@]}"; do
+  curl -L -o geoip-"${ip_name}".srs https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/${ip_name}.srs
+  echo "${green}geoip-${ip_name}.srs下载完毕${normal}"
+config_content+="      {
+        \"type\": \"local\",
+        \"tag\": \"geoip-${ip_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geoip-${ip_name}.srs\"
+      },\n"
+config_content_remote+="      {
+        \"type\": \"remote\",
+        \"tag\": \"geoip-${ip_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geoip-${ip_name}.srs\",
+        \"url\": \"https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/${ip_name}.srs\",
+        \"download_detour\": \"m4_hys2\",
+        \"update_interval\": \"24h0m0s\"
+      },\n"
+done
+
+config_content=${config_content%,\\n}
+config_content_remote=${config_content_remote%,\\n}
+echo "    \"rule_set\": [\n$config_content\n    ]," > rules_template.json
+echo "    \"rule_set\": [\n$config_content_remote\n    ]," > rules_template_remote.json
+echo "${red}使用rules_template.json文件内容粘贴到配置文件对应位置即可。${normal}"
+}
+
+Bin="${parent_dir}/binary/sing-box"
+
+geo() {
+# determine whether to download database files
+if [ -e "${scripts_dir}/rules/geoip.db" ] && [ -e "${scripts_dir}/rules/geosite.db" ]; then
+    echo "两个文件同时存在，不需要下载"
+    mv -f ${scripts_dir}/rules/geo*.db ${scripts_dir}/
+else
+    echo "两个文件不同时存在，重新下载"
+    curl -L -o geosite.db https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.db
+    curl -L -o geoip.db https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.db
+fi
+}
+
+# create configuration file
+srs() {
+for site_name in "${sitename[@]}"; do
+  ${Bin} geosite -c geosite.db export ${site_name}
+  echo geosite-${site_name}.srs
+  ${Bin} rule-set compile -o geosite-${site_name}.srs geosite-${site_name}.json
+  rm geosite-${site_name}.json
+config_content+="      {
+        \"type\": \"local\",
+        \"tag\": \"geosite-${site_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geosite-${site_name}.srs\"
+      },\n"
+      
+config_content_remote+="      {
+        \"type\": \"remote\",
+        \"tag\": \"geosite-${site_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geosite-${site_name}.srs\",
+        \"url\": \"https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/${site_name}.srs\",
+        \"download_detour\": \"m4_hys2\",
+        \"update_interval\": \"24h0m0s\"
+      },\n"
+done
+for ip_name in "${ipname[@]}"; do
+  ${Bin} geoip -c geoip.db export ${ip_name}
+  echo geoip-${ip_name}.srs
+  ${Bin} rule-set compile -o geoip-${ip_name}.srs geoip-${ip_name}.json
+  rm geoip-${ip_name}.json
+config_content+="      {
+        \"type\": \"local\",
+        \"tag\": \"geoip-${ip_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geoip-${ip_name}.srs\"
+      },\n"
+      
+config_content_remote+="      {
+        \"type\": \"remote\",
+        \"tag\": \"geoip-${ip_name}\",
+        \"format\": \"binary\",
+        \"path\": \"${parent_dir}/confs/rules/geoip-${ip_name}.srs\",
+        \"url\": \"https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/${ip_name}.srs\",
+        \"download_detour\": \"m4_hys2\",
+        \"update_interval\": \"24h0m0s\"
+      },\n"
+done
+# file output
+config_content=${config_content%,\\n}
+config_content_remote=${config_content_remote%,\\n}
+echo "    \"rule_set\": [\n$config_content\n    ]," > rules_template.json
+echo "    \"rule_set\": [\n$config_content_remote\n    ]," > rules_template_remote.json
+  ${Bin} geosite -c geosite.db list > geosite.list
+  ${Bin} geoip -c geoip.db list > geoip.list
+echo "${green}使用rules_template.json文件内容粘贴到配置文件对应位置即可。${normal}"
+}
+
+geo
+srs
+
+ # MetaCubeX
+
+mv -f ${scripts_dir}/*.srs ${scripts_dir}/rules/ > /dev/null 2>&1
+mv -f geo*.* ${scripts_dir}/rules/ > /dev/null 2>&1
+mv -f rules*.* ${scripts_dir}/rules/ > /dev/null 2>&1
+
+
+
+
+
+

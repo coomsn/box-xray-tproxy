@@ -1,0 +1,300 @@
+#!/system/bin/sh
+scripts=$(realpath $0)
+scripts_dir=$(dirname ${scripts})
+parent_dir=$(dirname ${scripts_dir})
+
+# define color
+normal=$(printf '\033[0m'); green=$(printf '\033[0;32m'); red=$(printf '\033[91m')
+
+# environment variables
+export PATH="/data/adb/magisk:/data/adb/ksu/bin:$PATH:/system/bin"
+export TZ='Asia/Shanghai'
+source ${scripts_dir}/settings.ini
+
+# Function to filter UIDs based on package names
+uid_filter() {
+  [ -f "uids.list" ] && rm "uids.list"
+  uid=""; uids=""
+  for package_name in ${package_list[@]}; do
+    uid=$(busybox awk -v package="${package_name}" '$1 ~ package {print $2}' /data/system/packages.list)
+    [ -n "${uid}" ] && uids+=("${uid}")
+    echo "${package_name}: ${uid}" >> ${scripts_dir}/uids.list
+  done
+}
+
+# Function to start the proxy
+start_proxy() {
+if [ -f "${Bin}" ]; then
+    chmod 755 ${Bin}
+    chown root:net_admin ${Bin}
+    uid_filter
+    chain_name="${Bin##*/}"
+    executeProxyRules
+    executeDisable_QUIC
+    ulimit -SHn 1000000
+  case "${Bin##*/}" in
+    "sing-box")
+      nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -c ${config_file} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
+    ;;
+  esac
+    update_description "✔" "is running."
+else
+    echo "Binary ${Bin} not found"
+    exit 1
+fi
+  echo "${Bin##*/}:$(pidof ${Bin})" > ${scripts_dir}/pid.txt
+  kill_other_processes
+  create_task
+}
+
+# Function to stop the proxy
+stop_proxy() {
+if [ -f "${scripts_dir}/pid.txt" ] ; then
+  chain_name=$(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)
+  executeDeleteProxyRules > /dev/null 2>&1
+  deleteDisable_QUIC
+  delete_task
+  update_description "✘" "was stopped."
+  killall $(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)
+  kill -9 $(awk -F ':' 'NR==1 {print $2}' ${scripts_dir}/pid.txt)
+  rm ${scripts_dir}/*.list
+  rm ${scripts_dir}/logs/*.log
+  rm ${scripts_dir}/pid.txt
+fi
+}
+
+# Function to create TPROXY rules
+createProxyRules() {
+  ${1} rule add fwmark "${fwmark}" table ${2}  pref $(( ${2} * 10 ))
+  ${1} route add local default dev lo table ${2}
+  # Create custom chain
+  ${3} -t mangle -N ${4}_EXTERNAL
+  ${3} -t mangle -F ${4}_EXTERNAL
+  ${3} -t mangle -N ${4}_LOCAL
+  ${3} -t mangle -F ${4}_LOCAL
+  ${3} -t mangle -N DIVERT
+  ${3} -t mangle -F DIVERT
+  
+# Create custom chain rules
+  ${3} -t mangle -A ${4}_LOCAL -p udp --dport 53 -j MARK --set-mark ${fwmark}
+  ${3} -t mangle -A ${4}_LOCAL -p tcp --dport 53 -j MARK --set-mark ${fwmark}
+  
+  ${3} -t mangle -A ${4}_EXTERNAL -p udp --dport 53 -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+  ${3} -t mangle -A ${4}_EXTERNAL -p tcp --dport 53 -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+
+  for subnet in ${5}; do
+    ${3} -t mangle -A ${4}_EXTERNAL -d ${subnet} -j RETURN
+    ${3} -t mangle -A ${4}_LOCAL -d ${subnet} -j RETURN
+  done
+
+  ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+  ${3} -t mangle -A ${4}_EXTERNAL -p udp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+  
+  if [ "${ap_list}" != "" ]; then
+  for ap in ${ap_list[@]} ; do
+    ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}"
+    ${3} -t mangle -A ${4}_EXTERNAL -p udp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}"
+  done
+fi  
+
+case "${list_mode}" in
+  "blacklist")
+    for appid in ${6}; do
+      ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${appid} -p tcp -j RETURN
+      ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${appid} -p udp ! --dport 53 -j RETURN
+    done
+    ${3} -t mangle -A ${4}_LOCAL -j MARK --set-mark ${fwmark}
+    ;;
+  "whitelist")
+    for appid in ${6}; do
+      ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${appid} -p tcp -j MARK --set-mark ${fwmark}
+      ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${appid} -p udp -j MARK --set-mark ${fwmark}
+    done
+    if [ -n "${AIDs}" ]; then
+      for AID in ${AIDs[*]}; do
+        ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${AID} -p tcp -j MARK --set-mark ${fwmark}
+        ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${AID} -p udp -j MARK --set-mark ${fwmark}
+      done
+    else
+      echo "Invalid list_mode: ${list_mode}"
+    fi
+    ;;
+  *)
+    echo "Invalid list_mode: ${list_mode}"
+    ;;
+esac
+
+# Loopback prevention rules
+  ${3} -t mangle -I ${4}_LOCAL -m owner  --gid-owner ${box_group} -j RETURN
+  
+  ${3} -t mangle -A DIVERT -j MARK --set-mark "${fwmark}"
+  ${3} -t mangle -A DIVERT -j ACCEPT
+  
+  # Referencing custom chains
+  ${3} -t mangle -A PREROUTING -j ${4}_EXTERNAL
+  ${3} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
+  ${3} -t mangle -A OUTPUT -j ${4}_LOCAL
+}
+
+# Function to execute proxy rules
+executeProxyRules() {
+  createProxyRules ip "${table}" "${IPV}" "${chain_name}" "${intranet[*]}" "${uids[*]}"
+  if [ "${ip6tables_switch}" = true ]; then
+    createProxyRules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6" "${intranet6[*]}" "${uids[*]}"
+  fi
+}
+
+# Function to delete proxy rules
+deleteProxyRules() {
+  ${1} rule del fwmark "${fwmark}" table ${2} pref $(( ${2} * 10 ))
+  ${1} route del local default dev lo table ${2}
+  ${1} route flush table ${2}
+  # First, delete the reference chain, otherwise the custom chain cannot be deleted.
+  ${3} -t mangle -D PREROUTING -j ${4}_EXTERNAL
+  ${3} -t mangle -D PREROUTING -p tcp -m socket -j DIVERT
+  ${3} -t mangle -D OUTPUT -j ${4}_LOCAL
+  # Secondly, delete the custom rules of the custom chain.
+  ${3} -t mangle -F ${4}_EXTERNAL
+  ${3} -t mangle -F DIVERT
+  ${3} -t mangle -F ${4}_LOCAL
+  # Finally, delete the custom chain.
+  ${3} -t mangle -X ${4}_EXTERNAL
+  ${3} -t mangle -X DIVERT
+  ${3} -t mangle -X ${4}_LOCAL
+}
+
+# Function to execute delete proxy rules
+executeDeleteProxyRules() {
+  deleteProxyRules ip "${table}" "${IPV}" "${chain_name}"
+  if [ "${ip6tables_switch}" = true ]; then
+    deleteProxyRules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6"
+  fi
+}
+
+# Function to create task
+create_task() {
+if [ "${crond_task}" = true ]; then
+  crontab_file="${scripts_dir}/root"
+  if pgrep busybox crond > /dev/null; then
+    kill -9 $(pgrep busybox crond)
+  fi
+  echo '5 0,12 * * * touch /data/adb/modules/box_lite-module/disable && sleep 3 && rm /data/adb/modules/box_lite-module/disable' > ${crontab_file}
+  nohup busybox crond -c ${scripts_dir}/ > /dev/null 2>&1 &
+  echo -e "${green}New task:\n$(busybox crontab -l -c ${scripts_dir}/)${normal}"
+else
+  echo -e "${red}crond_task is not set to true. No task created.${normal}"
+fi
+}
+
+# Function to delete task
+delete_task() {
+  if pgrep busybox crond > /dev/null; then
+    kill -9 $(pgrep busybox crond)
+    rm ${scripts_dir}/root > /dev/null 2>&1
+  fi
+}
+
+# Function to run proxy
+run_proxy() {
+  stop_proxy > /dev/null 2>&1
+  start_proxy
+}
+
+# Function to get local IP
+net_ip() {
+  local_ip=$(ip route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if ($i=="src") {print $(i+1); break}}') && echo "${local_ip}"
+}
+
+# Function to get network ID
+net_id() {
+  # get wifi ssid
+  ssid=$(iw dev wlan0 link | grep -i ssid | awk '{for(i=1;i<=NF;i++) if ($i=="SSID:") {print $(i+1); break}}')
+  [ -z "$ssid" ] && echo "mobile" || echo "${ssid}"
+}
+
+# disable / enable quic using Iptables rules 
+quic="disable"
+
+  # Disable QUIC
+Disable_QUIC() {
+  ${1} ${2} OUTPUT -p udp --dport 443 -m owner ! --gid-owner ${box_group} -j REJECT
+  ${1} ${2} OUTPUT -p udp --dport 80 -m owner ! --gid-owner ${box_group} -j REJECT
+}
+
+executeDisable_QUIC() {
+  if [ "${quic}" = "disable" ]; then
+    Disable_QUIC "${IPV}" "-A"
+    if [ "${ip6tables_switch}" = true ]; then
+    Disable_QUIC "${IP6V}" "-A"
+    fi
+  fi
+}
+
+deleteDisable_QUIC() {
+  if [ "${quic}" = "disable" ]; then
+    Disable_QUIC "${IPV}" "-D"
+    if [ "${ip6tables_switch}" = true ]; then
+    Disable_QUIC "${IP6V}" "-D"
+    fi
+  fi
+}
+
+# version
+version_number() {
+if [ -f "${Bin}" ]; then
+  case "${Bin##*/}" in
+    "xray")
+      version=$(${Bin} version | head -n 1 | awk '{print $2}')
+        ;;
+    "sing-box")
+      version=$(${Bin} version | head -n 1 | awk '{print $3}')
+        ;;
+    "mihomo")
+      version=$(${Bin} -v | head -n 1 | awk '{print $3}')
+        ;;
+  esac
+else
+    echo "Binary ${Bin} not found"
+    exit 1
+fi
+}
+
+update_description() {
+  local symbol=$1
+  local event=$2
+  version_number
+  prop_file="/data/adb/modules/box_lite-module/module.prop"
+  core_name="${chain_name}"
+  current_time=$(date "+[%m.%d %H:%M]")
+  sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${mode} ${event}" "${prop_file}"
+}
+
+kill_other_processes() {
+  local process_killed=false
+  local start_time=$(date +%s)
+  local timeout=10  # Set the timeout to 10 seconds.
+  until [ -f "${scripts_dir}/pid.txt" ]; do
+    sleep 1
+    local current_time=$(date +%s)
+    local elapsed_time=$((current_time - start_time))
+    echo "${elapsed_time}"
+    if [ $elapsed_time -ge $timeout ]; then
+      echo "Timeout occurred. pid.txt file not found within $timeout seconds."
+      return 1
+    fi
+  done
+  echo "Detected pid.txt file."
+  local current_process="$(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)"
+  for process in "${kernel[@]}"; do
+    if [ "$process" != "$current_process" ]; then
+      pgrep -x "$process" > /dev/null &&\
+      killall "$process" > /dev/null &&\
+      echo "kill $process" &&\
+      process_killed=true
+    fi
+  done
+  if ! $process_killed; then
+    echo "kill nothing"
+  fi
+  echo "The current running process is ${current_process}."
+}
