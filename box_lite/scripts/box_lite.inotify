@@ -1,9 +1,6 @@
 #!/system/bin/sh
 scripts=$(realpath $0)
 scripts_dir=$(dirname ${scripts})
-parent_dir=$(dirname ${scripts_dir})
-
-
 source "${scripts_dir}/box_lite.service"
 
 events=$1
