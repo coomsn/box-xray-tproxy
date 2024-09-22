@@ -1,4 +1,6 @@
 #!/system/bin/sh
+clear
+echo "The process is starting, please wait"
 scripts=$(realpath $0)
 scripts_dir=$(dirname ${scripts})
 parent_dir=$(dirname ${scripts_dir})
