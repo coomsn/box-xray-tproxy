@@ -1,13 +1,12 @@
 #!/system/bin/sh
 clear
-echo "The process is starting, please wait"
 scripts=$(realpath $0)
 scripts_dir=$(dirname ${scripts})
 parent_dir=$(dirname ${scripts_dir})
 module_dir="/data/adb/modules/box_lite-module"
 
 source ${scripts_dir}/box_lite.service
-
+log Info "The process is starting, please wait"
 # environment variables
 export PATH="/data/adb/magisk:/data/adb/ksu/bin:$PATH:/system/bin"
 

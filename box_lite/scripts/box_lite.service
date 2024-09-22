@@ -21,6 +21,25 @@ else
   IP6V="ip6tables"
 fi
 
+log() {
+  export TZ=Asia/Shanghai
+  now=$(date +"[%Y-%m-%d %H:%M:%S %Z]")
+  case $1 in
+    Info)
+      [ -t 1 ] && echo -e "\033[1;32m${now} [Info]: $2\033[0m" || echo "${now} [Info]: $2"
+      ;;
+    Warn)
+      [ -t 1 ] && echo -e "\033[1;33m${now} [Warn]: $2\033[0m" || echo "${now} [Warn]: $2"
+      ;;
+    Error)
+      [ -t 1 ] && echo -e "\033[1;31m${now} [Error]: $2\033[0m" || echo "${now} [Error]: $2"
+      ;;
+    *)
+      [ -t 1 ] && echo -e "\033[1;30m${now} [$1]: $2\033[0m" || echo "${now} [$1]: $2"
+      ;;
+  esac
+}
+
 # Function to filter UIDs based on package names
 uid_filter() {
   [ -f "uids.list" ] && rm "uids.list"
@@ -35,7 +54,7 @@ uid_filter() {
 # Function to start the proxy
 start_proxy() {
 if pidof ${Bin} > /dev/null 2>&1; then
-    echo "Close existing processes $(pidof ${Bin})"
+    log Info "Close existing processes $(pidof ${Bin})"
     stop_proxy
 fi
 if [ -f "${Bin}" ]; then
@@ -49,11 +68,11 @@ if [ -f "${Bin}" ]; then
     nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -c ${config_file} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
     update_description "✔" "is running."
 else
-    echo "Binary ${Bin} not found"
+    log Error "Binary ${Bin} not found"
     exit 1
 fi
   echo "${Bin##*/}:$(pidof ${Bin})" > ${scripts_dir}/pid.txt
-  echo "Create a new process $(pidof ${Bin})"
+  log Info "Create a new process $(pidof ${Bin})"
   create_task
 }
 
@@ -125,11 +144,11 @@ case "${proxy_mode}" in
         ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${AID} -p udp -j MARK --set-mark ${fwmark}
       done
     else
-      echo "Invalid proxy_mode: ${proxy_mode}"
+      log Error "Invalid proxy_mode: ${proxy_mode}"
     fi
     ;;
   *)
-    echo "Invalid proxy_mode: ${proxy_mode}"
+    log Error "Invalid proxy_mode: ${proxy_mode}"
     ;;
 esac
 
@@ -189,9 +208,9 @@ if [ "${crond_task}" = true ]; then
   fi
   echo '5 0,12 * * * touch /data/adb/modules/box_lite-module/disable && sleep 3 && rm /data/adb/modules/box_lite-module/disable' > ${crontab_file}
   nohup busybox crond -c ${scripts_dir}/ > /dev/null 2>&1 &
-  echo -e "${green}New task:\n$(busybox crontab -l -c ${scripts_dir}/)${normal}"
+  log Info "New task: $(busybox crontab -l -c ${scripts_dir}/)"
 else
-  echo -e "${red}crond_task is not set to true. No crond task created.${normal}"
+  log Warn "crond_task is not set to true. No crond task created."
 fi
 }
 
