@@ -8,7 +8,6 @@ normal=$(printf '\033[0m'); green=$(printf '\033[0;32m'); red=$(printf '\033[91m
 
 # environment variables
 export PATH="/data/adb/magisk:/data/adb/ksu/bin:$PATH:/system/bin"
-export TZ='Asia/Shanghai'
 source ${scripts_dir}/settings.ini
 
 # check iptables_version
@@ -43,18 +42,13 @@ if [ -f "${Bin}" ]; then
     executeProxyRules
     executeDisable_QUIC
     ulimit -SHn 1000000
-  case "${Bin##*/}" in
-    "sing-box")
-      nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -c ${config_file} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
-    ;;
-  esac
+    nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -c ${config_file} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
     update_description "✔" "is running."
 else
     echo "Binary ${Bin} not found"
     exit 1
 fi
   echo "${Bin##*/}:$(pidof ${Bin})" > ${scripts_dir}/pid.txt
-  kill_other_processes
   create_task
 }
 
@@ -108,7 +102,7 @@ createProxyRules() {
   done
 fi  
 
-case "${list_mode}" in
+case "${proxy_mode}" in
   "blacklist")
     for appid in ${6}; do
       ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${appid} -p tcp -j RETURN
@@ -127,11 +121,11 @@ case "${list_mode}" in
         ${3} -t mangle -A ${4}_LOCAL -m owner --uid-owner ${AID} -p udp -j MARK --set-mark ${fwmark}
       done
     else
-      echo "Invalid list_mode: ${list_mode}"
+      echo "Invalid proxy_mode: ${proxy_mode}"
     fi
     ;;
   *)
-    echo "Invalid list_mode: ${list_mode}"
+    echo "Invalid proxy_mode: ${proxy_mode}"
     ;;
 esac
 
@@ -211,18 +205,6 @@ run_proxy() {
   start_proxy
 }
 
-# Function to get local IP
-net_ip() {
-  local_ip=$(ip route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if ($i=="src") {print $(i+1); break}}') && echo "${local_ip}"
-}
-
-# Function to get network ID
-net_id() {
-  # get wifi ssid
-  ssid=$(iw dev wlan0 link | grep -i ssid | awk '{for(i=1;i<=NF;i++) if ($i=="SSID:") {print $(i+1); break}}')
-  [ -z "$ssid" ] && echo "mobile" || echo "${ssid}"
-}
-
 # disable / enable quic using Iptables rules 
 quic="disable"
 
@@ -252,22 +234,7 @@ deleteDisable_QUIC() {
 
 # version
 version_number() {
-if [ -f "${Bin}" ]; then
-  case "${Bin##*/}" in
-    "xray")
-      version=$(${Bin} version | head -n 1 | awk '{print $2}')
-        ;;
-    "sing-box")
-      version=$(${Bin} version | head -n 1 | awk '{print $3}')
-        ;;
-    "mihomo")
-      version=$(${Bin} -v | head -n 1 | awk '{print $3}')
-        ;;
-  esac
-else
-    echo "Binary ${Bin} not found"
-    exit 1
-fi
+  version=$(${Bin} version | head -n 1 | awk '{print $3}')
 }
 
 update_description() {
@@ -277,35 +244,6 @@ update_description() {
   prop_file="/data/adb/modules/box_lite-module/module.prop"
   core_name="${chain_name}"
   current_time=$(date "+[%m.%d %H:%M]")
-  sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${mode} ${event}" "${prop_file}"
+  sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
-
-kill_other_processes() {
-  local process_killed=false
-  local start_time=$(date +%s)
-  local timeout=10  # Set the timeout to 10 seconds.
-  until [ -f "${scripts_dir}/pid.txt" ]; do
-    sleep 1
-    local current_time=$(date +%s)
-    local elapsed_time=$((current_time - start_time))
-    echo "${elapsed_time}"
-    if [ $elapsed_time -ge $timeout ]; then
-      echo "Timeout occurred. pid.txt file not found within $timeout seconds."
-      return 1
-    fi
-  done
-  echo "Detected pid.txt file."
-  local current_process="$(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)"
-  for process in "${kernel[@]}"; do
-    if [ "$process" != "$current_process" ]; then
-      pgrep -x "$process" > /dev/null &&\
-      killall "$process" > /dev/null &&\
-      echo "kill $process" &&\
-      process_killed=true
-    fi
-  done
-  if ! $process_killed; then
-    echo "kill nothing"
-  fi
-  echo "The current running process is ${current_process}."
-}
+# 2024 9 22 0845
