@@ -8,11 +8,10 @@ source ${scripts_dir}/box_lite.service
 
 # environment variables
 export PATH="/data/adb/magisk:/data/adb/ksu/bin:$PATH:/system/bin"
-export TZ='Asia/Shanghai'
 
 # Check if the disable file does not exist, then run the proxy
 if [ ! -f "${module_dir}/disable" ]; then
-  run_proxy # >/dev/null 2>&1
+  start_proxy # >/dev/null 2>&1
 fi
 
 start_box_lite.inotify() {

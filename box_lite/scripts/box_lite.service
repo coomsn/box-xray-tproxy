@@ -34,6 +34,9 @@ uid_filter() {
 
 # Function to start the proxy
 start_proxy() {
+ip pidof ${Bin}; then
+    stop_proxy
+fi
 if [ -f "${Bin}" ]; then
     chmod 755 ${Bin}
     chown root:net_admin ${Bin}
@@ -197,12 +200,6 @@ delete_task() {
     kill -9 $(pgrep busybox crond)
     rm ${scripts_dir}/root > /dev/null 2>&1
   fi
-}
-
-# Function to run proxy
-run_proxy() {
-  stop_proxy > /dev/null 2>&1
-  start_proxy
 }
 
 # disable / enable quic using Iptables rules 
