@@ -34,7 +34,8 @@ uid_filter() {
 
 # Function to start the proxy
 start_proxy() {
-if pidof ${Bin}; then
+if pidof ${Bin} > /dev/null 2>&1; then
+    echo "Close existing processes $(pidof ${Bin})"
     stop_proxy
 fi
 if [ -f "${Bin}" ]; then
@@ -52,6 +53,7 @@ else
     exit 1
 fi
   echo "${Bin##*/}:$(pidof ${Bin})" > ${scripts_dir}/pid.txt
+  echo "Create a new process $(pidof ${Bin})"
   create_task
 }
 
@@ -63,10 +65,9 @@ if [ -f "${scripts_dir}/pid.txt" ] ; then
   deleteDisable_QUIC
   delete_task
   update_description "✘" "was stopped."
-  killall $(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)
-  kill -9 $(awk -F ':' 'NR==1 {print $2}' ${scripts_dir}/pid.txt)
+  killall $(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt) > /dev/null 2>&1
+  kill -9 $(awk -F ':' 'NR==1 {print $2}' ${scripts_dir}/pid.txt) > /dev/null 2>&1
   rm ${scripts_dir}/*.list
-  rm ${scripts_dir}/logs/*.log
   rm ${scripts_dir}/pid.txt
 fi
 }
@@ -190,7 +191,7 @@ if [ "${crond_task}" = true ]; then
   nohup busybox crond -c ${scripts_dir}/ > /dev/null 2>&1 &
   echo -e "${green}New task:\n$(busybox crontab -l -c ${scripts_dir}/)${normal}"
 else
-  echo -e "${red}crond_task is not set to true. No task created.${normal}"
+  echo -e "${red}crond_task is not set to true. No crond task created.${normal}"
 fi
 }
 
