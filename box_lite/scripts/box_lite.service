@@ -34,7 +34,7 @@ uid_filter() {
 
 # Function to start the proxy
 start_proxy() {
-ip pidof ${Bin}; then
+if pidof ${Bin}; then
     stop_proxy
 fi
 if [ -f "${Bin}" ]; then
