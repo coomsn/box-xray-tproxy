@@ -3,11 +3,6 @@ scripts=$(realpath $0)
 scripts_dir=$(dirname ${scripts})
 parent_dir=$(dirname ${scripts_dir})
 
-# define color
-normal=$(printf '\033[0m'); green=$(printf '\033[0;32m'); red=$(printf '\033[91m')
-
-# environment variables
-export PATH="/data/adb/magisk:/data/adb/ksu/bin:$PATH:/system/bin"
 source ${scripts_dir}/settings.ini
 
 # check iptables_version
@@ -62,28 +57,28 @@ if [ -f "${Bin}" ]; then
     chown root:net_admin ${Bin}
     uid_filter
     chain_name="${Bin##*/}"
-    executeProxyRules
-    executeDisable_QUIC
+    run_iptables_rules
+    run_disable_quic
     ulimit -SHn 1000000
     nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -c ${config_file} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
-    update_description "✔" "is running."
+    description "✔" "is running."
 else
     log Error "Binary ${Bin} not found"
     exit 1
 fi
   echo "${Bin##*/}:$(pidof ${Bin})" > ${scripts_dir}/pid.txt
   log Info "Create a new process $(pidof ${Bin})"
-  create_task
+  cron_task
 }
 
 # Function to stop the proxy
 stop_proxy() {
 if [ -f "${scripts_dir}/pid.txt" ] ; then
   chain_name=$(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)
-  executeDeleteProxyRules > /dev/null 2>&1
-  deleteDisable_QUIC
-  delete_task
-  update_description "✘" "was stopped."
+  run_del_iptables_rules > /dev/null 2>&1
+  del_disable_quic
+  del_task
+  description "✘" "was stopped."
   killall $(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt) > /dev/null 2>&1
   kill -9 $(awk -F ':' 'NR==1 {print $2}' ${scripts_dir}/pid.txt) > /dev/null 2>&1
   rm ${scripts_dir}/*.list
@@ -92,7 +87,7 @@ fi
 }
 
 # Function to create TPROXY rules
-createProxyRules() {
+iptables_rules() {
   ${1} rule add fwmark "${fwmark}" table ${2}  pref $(( ${2} * 10 ))
   ${1} route add local default dev lo table ${2}
   # Create custom chain
@@ -165,15 +160,15 @@ esac
 }
 
 # Function to execute proxy rules
-executeProxyRules() {
-  createProxyRules ip "${table}" "${IPV}" "${chain_name}" "${intranet[*]}" "${uids[*]}"
+run_iptables_rules() {
+  iptables_rules ip "${table}" "${IPV}" "${chain_name}" "${intranet[*]}" "${uids[*]}"
   if [ "${ip6tables_switch}" = true ]; then
-    createProxyRules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6" "${intranet6[*]}" "${uids[*]}"
+    iptables_rules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6" "${intranet6[*]}" "${uids[*]}"
   fi
 }
 
 # Function to delete proxy rules
-deleteProxyRules() {
+del_iptables_rules() {
   ${1} rule del fwmark "${fwmark}" table ${2} pref $(( ${2} * 10 ))
   ${1} route del local default dev lo table ${2}
   ${1} route flush table ${2}
@@ -192,15 +187,15 @@ deleteProxyRules() {
 }
 
 # Function to execute delete proxy rules
-executeDeleteProxyRules() {
-  deleteProxyRules ip "${table}" "${IPV}" "${chain_name}"
+run_del_iptables_rules() {
+  del_iptables_rules ip "${table}" "${IPV}" "${chain_name}"
   if [ "${ip6tables_switch}" = true ]; then
-    deleteProxyRules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6"
+    del_iptables_rules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6"
   fi
 }
 
 # Function to create task
-create_task() {
+cron_task() {
 if [ "${crond_task}" = true ]; then
   crontab_file="${scripts_dir}/root"
   if pgrep busybox crond > /dev/null; then
@@ -215,7 +210,7 @@ fi
 }
 
 # Function to delete task
-delete_task() {
+del_task() {
   if pgrep busybox crond > /dev/null; then
     kill -9 $(pgrep busybox crond)
     rm ${scripts_dir}/root > /dev/null 2>&1
@@ -226,41 +221,42 @@ delete_task() {
 quic="disable"
 
   # Disable QUIC
-Disable_QUIC() {
+disable_quic() {
   ${1} ${2} OUTPUT -p udp --dport 443 -m owner ! --gid-owner ${box_group} -j REJECT
   ${1} ${2} OUTPUT -p udp --dport 80 -m owner ! --gid-owner ${box_group} -j REJECT
 }
 
-executeDisable_QUIC() {
+run_disable_quic() {
   if [ "${quic}" = "disable" ]; then
-    Disable_QUIC "${IPV}" "-A"
+    disable_quic "${IPV}" "-A"
     if [ "${ip6tables_switch}" = true ]; then
-    Disable_QUIC "${IP6V}" "-A"
+    disable_quic "${IP6V}" "-A"
     fi
   fi
 }
 
-deleteDisable_QUIC() {
+del_disable_quic() {
   if [ "${quic}" = "disable" ]; then
-    Disable_QUIC "${IPV}" "-D"
+    disable_quic "${IPV}" "-D"
     if [ "${ip6tables_switch}" = true ]; then
-    Disable_QUIC "${IP6V}" "-D"
+    disable_quic "${IP6V}" "-D"
     fi
   fi
 }
 
 # version
-version_number() {
+version() {
   version=$(${Bin} version | head -n 1 | awk '{print $3}')
 }
 
-update_description() {
+description() {
   local symbol=$1
   local event=$2
-  version_number
+  version
   prop_file="/data/adb/modules/box_lite-module/module.prop"
   core_name="${chain_name}"
   current_time=$(date "+[%m.%d %H:%M]")
   sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
-# 2024 9 22 0845
+
+# 2024 1004 1650
