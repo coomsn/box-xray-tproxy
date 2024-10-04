@@ -1,7 +1,7 @@
 id=box_lite-module
 name=box_lite4magisk
 version=v1.0
-versionCode=2024092213
+versionCode=2024100417
 author=Tony
-description=Created on 9 22, 2024.
+description=Created on 10 04, 2024.
 updateJson=https://github.com/coomsn/box_lite4magisk_public/raw/main/update.json
