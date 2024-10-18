@@ -148,7 +148,7 @@ case "${proxy_mode}" in
 esac
 
 # Loopback prevention rules 1
-  ${3} -t mangle -I ${4}_LOCAL -m owner  --gid-owner ${box_group} -j RETURN
+  ${3} -t mangle -I ${4}_LOCAL -m owner --gid-owner ${box_group} -j RETURN
 # Loopback prevention rules 2
   ${3} -t mangle -A DIVERT -j MARK --set-mark "${fwmark}"
   ${3} -t mangle -A DIVERT -j ACCEPT
@@ -259,4 +259,4 @@ description() {
   sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
 
-# 2024 1004 1650
+# 2024 1018 1340
