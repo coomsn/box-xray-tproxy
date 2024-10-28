@@ -88,7 +88,7 @@ fi
 
 # Function to create TPROXY rules
 iptables_rules() {
-  ${1} rule add fwmark "${fwmark}" table ${2}  pref $(( ${2} * 10 ))
+  ${1} rule add fwmark "${fwmark}" table ${2} pref $(( ${2} * 10 ))
   ${1} route add local default dev lo table ${2}
   # Create custom chain
   ${3} -t mangle -N ${4}_EXTERNAL
@@ -259,4 +259,4 @@ description() {
   sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
 
-# 2024 1018 1340
+# 2024 1028 2245
