@@ -11,12 +11,10 @@ monitor_file=$3
 if [ "${monitor_file}" = "disable" ]; then
   case "${events}" in
     "d")
-      start_proxy >/dev/null 2>&1
+      start_tproxy >/dev/null 2>&1
       ;;
     "n")
-      stop_proxy >/dev/null 2>&1
+      stop_tproxy >/dev/null 2>&1
       ;;
   esac
 fi
-
-# 2024 1004 1650

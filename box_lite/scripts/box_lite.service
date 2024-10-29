@@ -47,10 +47,10 @@ uid_filter() {
 }
 
 # Function to start the proxy
-start_proxy() {
+start_tproxy() {
 if pidof ${Bin} > /dev/null 2>&1; then
     log Info "Close existing processes $(pidof ${Bin})"
-    stop_proxy
+    stop_tproxy
 fi
 if [ -f "${Bin}" ]; then
     chmod 755 ${Bin}
@@ -72,7 +72,7 @@ fi
 }
 
 # Function to stop the proxy
-stop_proxy() {
+stop_tproxy() {
 if [ -f "${scripts_dir}/pid.txt" ] ; then
   chain_name=$(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)
   run_del_iptables_rules > /dev/null 2>&1
@@ -259,4 +259,3 @@ description() {
   sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
 
-# 2024 1028 2245
