@@ -60,7 +60,10 @@ if [ -f "${Bin}" ]; then
     run_iptables_rules
     run_disable_quic
     ulimit -SHn 1000000
-    nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -c ${config_file} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
+    nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -C ${config_dir} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
+    chmod +x ${binaryxray}
+    chown root:net_admin ${binaryxray}
+    nohup busybox setuidgid ${xray_user}:${xray_group} ${binaryxray} run -confdir ${xray_dir} > /dev/null 2>&1 &
     description "✔" "is running."
 else
     log Error "Binary ${Bin} not found"
@@ -83,6 +86,8 @@ if [ -f "${scripts_dir}/pid.txt" ] ; then
   kill -9 $(awk -F ':' 'NR==1 {print $2}' ${scripts_dir}/pid.txt) > /dev/null 2>&1
   rm ${scripts_dir}/*.list
   rm ${scripts_dir}/pid.txt
+  killall xray
+  find "${parent_dir}" -type f -name "*.log" ! -name "run.log" -exec rm -f {} +
 fi
 }
 
@@ -106,17 +111,17 @@ iptables_rules() {
   ${3} -t mangle -A ${4}_EXTERNAL -p tcp --dport 53 -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
 
   for subnet in ${5}; do
-    ${3} -t mangle -A ${4}_EXTERNAL -d ${subnet} -j RETURN
-    ${3} -t mangle -A ${4}_LOCAL -d ${subnet} -j RETURN
+    ${3} -t mangle -A ${4}_EXTERNAL -d ${subnet} -j RETURN &
+    ${3} -t mangle -A ${4}_LOCAL -d ${subnet} -j RETURN &
   done
 
   ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
   ${3} -t mangle -A ${4}_EXTERNAL -p udp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
   
-  if [ "${ap_list}" != "" ]; then
+if [ "${ap_list}" != "" ]; then
   for ap in ${ap_list[@]} ; do
-    ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}"
-    ${3} -t mangle -A ${4}_EXTERNAL -p udp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}"
+    ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}" &
+    ${3} -t mangle -A ${4}_EXTERNAL -p udp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}" &
   done
 fi  
 
