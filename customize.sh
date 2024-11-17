@@ -52,8 +52,11 @@ if [ -n "$largest_folder" ]; then
         cp -rf "$folder/confs/"* /data/adb/box_lite/confs/
         cp -f "$folder/scripts/settings.ini" /data/adb/box_lite/scripts/
         ui_print "- Copied contents of $folder/confs to /data/adb/box_lite/confs/"
-        ui_print "- 成功还原配置文件"
+        cp -rf "$folder/xray/"* /data/adb/box_lite/xray/
+        ui_print "- Copied contents of $folder/xray to /data/adb/box_lite/xray/"        
+        ui_print "- 成功还原节点配置文件"
         ui_print "- 成功还原settings.ini"
+        ui_print "- 成功还原xray配置文件"
       fi
       break
     fi
