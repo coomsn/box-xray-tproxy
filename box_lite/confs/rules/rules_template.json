@@ -1,0 +1,176 @@
+    "rule_set": [
+      {
+        "type": "local",
+        "tag": "geosite-facebook",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-facebook.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-google",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-google.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-google@cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-google@cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-telegram",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-telegram.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-twitter",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-twitter.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-netflix",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-netflix.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-tumblr",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-tumblr.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-geolocation-!cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-geolocation-!cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-steam",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-steam.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-discord",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-discord.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-openai",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-openai.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-github",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-github.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-microsoft",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-microsoft.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-microsoft@cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-microsoft@cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-category-ads-all",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-category-ads-all.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-private",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-private.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-youtube",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-youtube.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-reddit",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-reddit.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-bing",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-bing.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-bing@cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-bing@cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-tld-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-tld-cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-netease",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-netease.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-tencent",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-tencent.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geosite-geolocation-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geosite-geolocation-cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geoip-cn",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-cn.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geoip-tw",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-tw.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geoip-hk",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-hk.srs"
+      },
+      {
+        "type": "local",
+        "tag": "geoip-telegram",
+        "format": "binary",
+        "path": "/data/adb/box_lite/confs/rules/geoip-telegram.srs"
+      }
+    ],

@@ -37,41 +37,43 @@ log() {
 
 # Function to filter UIDs based on package names
 uid_filter() {
-  [ -f "uids.list" ] && rm "uids.list"
-  uid=""; uids=""
-  for package_name in ${package_list[@]}; do
-    uid=$(busybox awk -v package="${package_name}" '$1 ~ package {print $2}' /data/system/packages.list)
-    [ -n "${uid}" ] && uids+=("${uid}") &&\
-    echo "${package_name}: ${uid}" >> ${scripts_dir}/uids.list
-  done
+[ -f "uids.list" ] && rm "uids.list"
+uid=""; uids=""
+for package_name in ${package_list[@]}; do
+  uid=$(busybox awk -v package="${package_name}" '$1 ~ package {print $2}' /data/system/packages.list)
+  [ -n "${uid}" ] && uids+=("${uid}") &&\
+  echo "${package_name}: ${uid}" >> ${scripts_dir}/uids.list
+done
 }
 
 # Function to start the proxy
 start_tproxy() {
-if pidof ${Bin} > /dev/null 2>&1; then
-    log Info "Close existing processes $(pidof ${Bin})"
+if pidof ${bin_box} > /dev/null 2>&1; then
+    log Info "Close existing processes $(pidof ${bin_box})"
     stop_tproxy
 fi
-if [ -f "${Bin}" ]; then
-    chmod 755 ${Bin}
-    chown root:net_admin ${Bin}
-    uid_filter
-    chain_name="${Bin##*/}"
-    run_iptables_rules
-    run_disable_quic
-    ulimit -SHn 1000000
-    nohup busybox setuidgid ${box_user}:${box_group} ${Bin} run -C ${config_dir} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
-    chmod +x ${binaryxray}
-    chown root:net_admin ${binaryxray}
-    nohup busybox setuidgid ${xray_user}:${xray_group} ${binaryxray} run -confdir ${xray_dir} > /dev/null 2>&1 &
-    description "✔" "is running."
+if [ -f "${bin_box}" ]; then
+  chmod 755 ${bin_box}
+  chown root:net_admin ${bin_box}
+  uid_filter
+  chain_name="${bin_box##*/}"
+  run_iptables_rules
+  run_disable_quic
+  ulimit -SHn 1000000
+  nohup busybox setuidgid ${box_user}:${box_group} ${bin_box} run -C ${config_dir} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
+  chmod +x ${bin_xray}
+  chown root:net_admin ${bin_xray}
+  export XRAY_LOCATION_ASSET="${xray_geos_dir}"
+  export XRAY_LOCATION_CONFDIR="${xray_confs_dir}"
+  nohup busybox setuidgid ${xray_user}:${xray_group} ${bin_xray} > /dev/null 2>&1 &
+  description "✔" "is running."
 else
-    log Error "Binary ${Bin} not found"
-    exit 1
+  log Error "Binary ${bin_box} not found"
+  exit 1
 fi
-  echo "${Bin##*/}:$(pidof ${Bin})" > ${scripts_dir}/pid.txt
-  log Info "Create a new process $(pidof ${Bin})"
-  cron_task
+echo "${bin_box##*/}:$(pidof ${bin_box})" > ${scripts_dir}/pid.txt
+log Info "Create a new process $(pidof ${bin_box})"
+cron_task
 }
 
 # Function to stop the proxy
@@ -93,35 +95,35 @@ fi
 
 # Function to create TPROXY rules
 iptables_rules() {
-  ${1} rule add fwmark "${fwmark}" table ${2} pref $(( ${2} * 10 ))
-  ${1} route add local default dev lo table ${2}
-  # Create custom chain
-  ${3} -t mangle -N ${4}_EXTERNAL
-  ${3} -t mangle -F ${4}_EXTERNAL
-  ${3} -t mangle -N ${4}_LOCAL
-  ${3} -t mangle -F ${4}_LOCAL
-  ${3} -t mangle -N DIVERT
-  ${3} -t mangle -F DIVERT
+${1} rule add fwmark "${fwmark}" table ${2} pref $(( ${2} * 10 ))
+${1} route add local default dev lo table ${2}
+# Create custom chain
+${3} -t mangle -N ${4}_EXTERNAL
+${3} -t mangle -F ${4}_EXTERNAL
+${3} -t mangle -N ${4}_LOCAL
+${3} -t mangle -F ${4}_LOCAL
+${3} -t mangle -N DIVERT
+${3} -t mangle -F DIVERT
   
 # Create custom chain rules
-  ${3} -t mangle -A ${4}_LOCAL -p udp --dport 53 -j MARK --set-mark ${fwmark}
-  ${3} -t mangle -A ${4}_LOCAL -p tcp --dport 53 -j MARK --set-mark ${fwmark}
+${3} -t mangle -A ${4}_LOCAL -p udp --dport 53 -j MARK --set-mark ${fwmark}
+${3} -t mangle -A ${4}_LOCAL -p tcp --dport 53 -j MARK --set-mark ${fwmark}
+
+${3} -t mangle -A ${4}_EXTERNAL -p udp --dport 53 -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+${3} -t mangle -A ${4}_EXTERNAL -p tcp --dport 53 -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
   
-  ${3} -t mangle -A ${4}_EXTERNAL -p udp --dport 53 -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
-  ${3} -t mangle -A ${4}_EXTERNAL -p tcp --dport 53 -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+for subnet in ${5}; do
+  ${3} -t mangle -A ${4}_EXTERNAL -d ${subnet} -j RETURN
+  ${3} -t mangle -A ${4}_LOCAL -d ${subnet} -j RETURN
+done
 
-  for subnet in ${5}; do
-    ${3} -t mangle -A ${4}_EXTERNAL -d ${subnet} -j RETURN &
-    ${3} -t mangle -A ${4}_LOCAL -d ${subnet} -j RETURN &
-  done
-
-  ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
-  ${3} -t mangle -A ${4}_EXTERNAL -p udp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+${3} -t mangle -A ${4}_EXTERNAL -p tcp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
+${3} -t mangle -A ${4}_EXTERNAL -p udp -i lo -j TPROXY --on-port ${tp_port} --tproxy-mark ${fwmark}
   
 if [ "${ap_list}" != "" ]; then
   for ap in ${ap_list[@]} ; do
-    ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}" &
-    ${3} -t mangle -A ${4}_EXTERNAL -p udp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}" &
+    ${3} -t mangle -A ${4}_EXTERNAL -p tcp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}"
+    ${3} -t mangle -A ${4}_EXTERNAL -p udp -i "${ap}" -j TPROXY --on-port "${tp_port}" --tproxy-mark "${fwmark}"
   done
 fi  
 
@@ -153,50 +155,51 @@ case "${proxy_mode}" in
 esac
 
 # Loopback prevention rules 1
-  ${3} -t mangle -I ${4}_LOCAL -m owner --gid-owner ${box_group} -j RETURN
+${3} -t mangle -I ${4}_LOCAL -m owner --gid-owner ${box_group} -j RETURN
+${3} -t mangle -I ${4}_LOCAL -m owner --gid-owner ${xray_group} -j RETURN
 # Loopback prevention rules 2
-  ${3} -t mangle -A DIVERT -j MARK --set-mark "${fwmark}"
-  ${3} -t mangle -A DIVERT -j ACCEPT
-  
-  # Referencing custom chains
-  ${3} -t mangle -A PREROUTING -j ${4}_EXTERNAL
-  ${3} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
-  ${3} -t mangle -A OUTPUT -j ${4}_LOCAL
+${3} -t mangle -A DIVERT -j MARK --set-mark "${fwmark}"
+${3} -t mangle -A DIVERT -j ACCEPT
+
+# Referencing custom chains
+${3} -t mangle -A PREROUTING -j ${4}_EXTERNAL
+${3} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
+${3} -t mangle -A OUTPUT -j ${4}_LOCAL
 }
 
 # Function to execute proxy rules
 run_iptables_rules() {
-  iptables_rules ip "${table}" "${IPV}" "${chain_name}" "${intranet[*]}" "${uids[*]}"
-  if [ "${ip6tables_switch}" = true ]; then
-    iptables_rules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6" "${intranet6[*]}" "${uids[*]}"
-  fi
+iptables_rules ip "${table}" "${IPV}" "${chain_name}" "${intranet[*]}" "${uids[*]}"
+if [ "${ip6tables_switch}" = true ]; then
+  iptables_rules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6" "${intranet6[*]}" "${uids[*]}"
+fi
 }
 
 # Function to delete proxy rules
 del_iptables_rules() {
-  ${1} rule del fwmark "${fwmark}" table ${2} pref $(( ${2} * 10 ))
-  ${1} route del local default dev lo table ${2}
-  ${1} route flush table ${2}
-  # First, delete the reference chain, otherwise the custom chain cannot be deleted.
-  ${3} -t mangle -D PREROUTING -j ${4}_EXTERNAL
-  ${3} -t mangle -D PREROUTING -p tcp -m socket -j DIVERT
-  ${3} -t mangle -D OUTPUT -j ${4}_LOCAL
-  # Secondly, delete the custom rules of the custom chain.
-  ${3} -t mangle -F ${4}_EXTERNAL
-  ${3} -t mangle -F DIVERT
-  ${3} -t mangle -F ${4}_LOCAL
-  # Finally, delete the custom chain.
-  ${3} -t mangle -X ${4}_EXTERNAL
-  ${3} -t mangle -X DIVERT
-  ${3} -t mangle -X ${4}_LOCAL
+${1} rule del fwmark "${fwmark}" table ${2} pref $(( ${2} * 10 ))
+${1} route del local default dev lo table ${2}
+${1} route flush table ${2}
+# First, delete the reference chain, otherwise the custom chain cannot be deleted.
+${3} -t mangle -D PREROUTING -j ${4}_EXTERNAL
+${3} -t mangle -D PREROUTING -p tcp -m socket -j DIVERT
+${3} -t mangle -D OUTPUT -j ${4}_LOCAL
+# Secondly, delete the custom rules of the custom chain.
+${3} -t mangle -F ${4}_EXTERNAL
+${3} -t mangle -F DIVERT
+${3} -t mangle -F ${4}_LOCAL
+# Finally, delete the custom chain.
+${3} -t mangle -X ${4}_EXTERNAL
+${3} -t mangle -X DIVERT
+${3} -t mangle -X ${4}_LOCAL
 }
 
 # Function to execute delete proxy rules
 run_del_iptables_rules() {
-  del_iptables_rules ip "${table}" "${IPV}" "${chain_name}"
-  if [ "${ip6tables_switch}" = true ]; then
-    del_iptables_rules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6"
-  fi
+del_iptables_rules ip "${table}" "${IPV}" "${chain_name}"
+if [ "${ip6tables_switch}" = true ]; then
+  del_iptables_rules "ip -6" "$(( ${table} * 2 ))" "${IP6V}" "${chain_name}6"
+fi
 }
 
 # Function to create task
@@ -216,10 +219,10 @@ fi
 
 # Function to delete task
 del_task() {
-  if pgrep busybox crond > /dev/null; then
-    kill -9 $(pgrep busybox crond)
-    rm ${scripts_dir}/root > /dev/null 2>&1
-  fi
+if pgrep busybox crond > /dev/null; then
+  kill -9 $(pgrep busybox crond)
+  rm ${scripts_dir}/root > /dev/null 2>&1
+fi
 }
 
 # disable / enable quic using Iptables rules 
@@ -227,40 +230,40 @@ quic="disable"
 
   # Disable QUIC
 disable_quic() {
-  ${1} ${2} OUTPUT -p udp --dport 443 -m owner ! --gid-owner ${box_group} -j REJECT
-  ${1} ${2} OUTPUT -p udp --dport 80 -m owner ! --gid-owner ${box_group} -j REJECT
+${1} ${2} OUTPUT -p udp --dport 443 -m owner ! --gid-owner ${box_group} -j REJECT
+${1} ${2} OUTPUT -p udp --dport 80 -m owner ! --gid-owner ${box_group} -j REJECT
 }
 
 run_disable_quic() {
-  if [ "${quic}" = "disable" ]; then
-    disable_quic "${IPV}" "-A"
-    if [ "${ip6tables_switch}" = true ]; then
-    disable_quic "${IP6V}" "-A"
-    fi
+if [ "${quic}" = "disable" ]; then
+  disable_quic "${IPV}" "-A"
+  if [ "${ip6tables_switch}" = true ]; then
+  disable_quic "${IP6V}" "-A"
   fi
+fi
 }
 
 del_disable_quic() {
-  if [ "${quic}" = "disable" ]; then
-    disable_quic "${IPV}" "-D"
-    if [ "${ip6tables_switch}" = true ]; then
-    disable_quic "${IP6V}" "-D"
-    fi
+if [ "${quic}" = "disable" ]; then
+  disable_quic "${IPV}" "-D"
+  if [ "${ip6tables_switch}" = true ]; then
+  disable_quic "${IP6V}" "-D"
   fi
+fi
 }
 
 # version
 version() {
-  version=$(${Bin} version | head -n 1 | awk '{print $3}')
+version=$(${bin_box} version | head -n 1 | awk '{print $3}')
 }
 
 description() {
-  local symbol=$1
-  local event=$2
-  version
-  prop_file="/data/adb/modules/box_lite-module/module.prop"
-  core_name="${chain_name}"
-  current_time=$(date "+[%m.%d %H:%M]")
-  sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
+local symbol=$1
+local event=$2
+version
+prop_file="/data/adb/modules/box_lite-module/module.prop"
+core_name="${chain_name}"
+current_time=$(date "+[%m.%d %H:%M]")
+sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
-
+# version2.0

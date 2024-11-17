@@ -15,7 +15,7 @@ ipname=(cn tw hk telegram)
 
 MetaCubeX() {
 for site_name in "${sitename[@]}"; do
-  curl -L -o geosite-"${site_name}".srs https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/${site_name}.srs
+  curl -L --progress-bar -o geosite-"${site_name}".srs https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/${site_name}.srs
   echo "${green}geosite-${site_name}.srs下载完毕${normal}"
 config_content+="      {
         \"type\": \"local\",
@@ -36,7 +36,7 @@ config_content_remote+="      {
 done
 
 for ip_name in "${ipname[@]}"; do
-  curl -L -o geoip-"${ip_name}".srs https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/${ip_name}.srs
+  curl -L --progress-bar -o geoip-"${ip_name}".srs https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/${ip_name}.srs
   echo "${green}geoip-${ip_name}.srs下载完毕${normal}"
 config_content+="      {
         \"type\": \"local\",
@@ -71,8 +71,8 @@ if [ -e "${scripts_dir}/rules/geoip.db" ] && [ -e "${scripts_dir}/rules/geosite.
     mv -f ${scripts_dir}/rules/geo*.db ${scripts_dir}/
 else
     echo "两个文件不同时存在，重新下载"
-    curl -L -o geosite.db https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.db
-    curl -L -o geoip.db https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.db
+    curl -L --progress-bar -o geosite.db https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.db
+    curl -L --progress-bar -o geoip.db https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.db
 fi
 }
 
@@ -132,16 +132,38 @@ echo "    \"rule_set\": [\n$config_content_remote\n    ]," > rules_template_remo
 echo "${green}使用rules_template.json文件内容粘贴到配置文件对应位置即可。${normal}"
 }
 
-geo
-srs
+mv_rules() {
+  mv -f ${scripts_dir}/*.srs ${scripts_dir}/rules/ > /dev/null 2>&1
+  mv -f geo*.* ${scripts_dir}/rules/ > /dev/null 2>&1
+  mv -f rules*.* ${scripts_dir}/rules/ > /dev/null 2>&1
+}
 
- # MetaCubeX
-
-mv -f ${scripts_dir}/*.srs ${scripts_dir}/rules/ > /dev/null 2>&1
-mv -f geo*.* ${scripts_dir}/rules/ > /dev/null 2>&1
-mv -f rules*.* ${scripts_dir}/rules/ > /dev/null 2>&1
-
-
+clear
+echo "Please select an operation:"
+select option in "geo && srs" "MetaCubeX" "quit"
+do
+  case $option in
+    "geo && srs")
+      log Info "You selected the geo && srs operation"
+      geo && srs
+      mv_rules
+      break
+      ;;
+    "MetaCubeX")
+      log Info "You selected the MetaCubeX operation"
+      MetaCubeX
+      mv_rules
+      break
+      ;;
+    "quit")
+      log Warn "You selected to quit"
+      break
+      ;;
+    *)
+      log Warn "Invalid option, please enter 1, 2, or 3 to select!"
+      ;;
+  esac
+done
 
 
 
