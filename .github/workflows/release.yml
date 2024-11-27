@@ -1,4 +1,4 @@
-name: box_tproxy4magisk_2.0
+name: box_tproxy4magisk_v2.0
 
 on:
   workflow_dispatch:
