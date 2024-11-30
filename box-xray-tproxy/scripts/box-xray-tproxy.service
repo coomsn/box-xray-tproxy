@@ -68,14 +68,14 @@ if [ -f "${bin_box}" ]; then
   nohup busybox setuidgid ${xray_user}:${xray_group} ${bin_xray} > /dev/null 2>&1 &
   am start -a android.intent.action.VIEW -n com.jozein.xedgepro/.ui.ActivityPerformAction --ei __0 111 --es __1 "代理已开启" >/dev/null 2>&1
   description "✔" "is running."
+  echo "${bin_box##*/}:$(pidof ${bin_box})" > ${scripts_dir}/pid.txt
+  log Info "Create a new process $(pidof ${bin_box})"
+  cron_task
 else
   log Error "Binary ${bin_box} not found"
   am start -a android.intent.action.VIEW -n com.jozein.xedgepro/.ui.ActivityPerformAction --ei __0 111 --es __1 "${bin_box##*/} not found" >/dev/null 2>&1
   exit 1
 fi
-echo "${bin_box##*/}:$(pidof ${bin_box})" > ${scripts_dir}/pid.txt
-log Info "Create a new process $(pidof ${bin_box})"
-cron_task
 }
 
 # Function to stop the proxy
