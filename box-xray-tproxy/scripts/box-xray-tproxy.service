@@ -266,4 +266,4 @@ core_name="${chain_name}"
 current_time=$(date "+[%m.%d %H:%M]")
 sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
-# version2.0
+# {version2.1}
