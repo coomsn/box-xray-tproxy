@@ -4,6 +4,8 @@ scripts=$(realpath $0)
 scripts_dir=$(dirname ${scripts})
 parent_dir=$(dirname ${scripts_dir})
 module_dir="/data/adb/modules/box-xray-tproxy"
+# Environment variable settings
+export PATH="/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH"
 
 source ${scripts_dir}/box-xray-tproxy.service
 log Info "The process is starting, please wait"
