@@ -37,7 +37,7 @@ log() {
 
 # Function to filter UIDs based on package names
 uid_filter() {
-[ -f "uids.list" ] && rm "uids.list"
+[ -f "${scripts_dir}/uids.list" ] && rm "${scripts_dir}/uids.list"
 uid=""; uids=""
 for package_name in ${package_list[@]}; do
   uid=$(busybox awk -v package="${package_name}" '$1 ~ package {print $2}' /data/system/packages.list)
