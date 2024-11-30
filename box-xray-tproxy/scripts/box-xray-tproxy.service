@@ -91,7 +91,7 @@ if [ -f "${scripts_dir}/pid.txt" ] ; then
   kill -9 $(awk -F ':' 'NR==1 {print $2}' ${scripts_dir}/pid.txt) > /dev/null 2>&1
   rm ${scripts_dir}/*.list
   rm ${scripts_dir}/pid.txt
-  killall xray
+  killall xray > /dev/null 2>&1
   am start -a android.intent.action.VIEW -n com.jozein.xedgepro/.ui.ActivityPerformAction --ei __0 111 --es __1 "代理已关闭" >/dev/null 2>&1
   find "${parent_dir}" -type f -name "*.log" ! -name "run.log" -exec rm -f {} +
 fi
