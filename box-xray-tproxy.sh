@@ -3,7 +3,7 @@
 scripts_dir="/data/adb/box-xray-tproxy/scripts"
 (
 until [ "$(getprop sys.boot_completed)" -eq 1 ]; do
-    sleep 4
+    sleep 2
 done
 
 chmod 755 "${scripts_dir}/start.sh"
