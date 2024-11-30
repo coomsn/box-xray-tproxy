@@ -1,7 +1,6 @@
 #!/system/bin/sh
 scripts=$(realpath $0)
 scripts_dir=$(dirname ${scripts})
-parent_dir=$(dirname ${scripts_dir})
 
 source "${scripts_dir}/box-xray-tproxy.service"
 
@@ -18,3 +17,5 @@ if [ "${monitor_file}" = "disable" ]; then
       ;;
   esac
 fi
+
+# {version:2.1}
