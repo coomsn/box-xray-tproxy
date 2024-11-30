@@ -1,6 +1,6 @@
 {
-  "version": "v2.0",
-  "versionCode": "20241127",
-  "zipUrl": "https://github.com/coomsn/box-xray-tproxy/releases/download/v2.0/box-xray-tproxy-v2.0.zip",
+  "version": "v2.1",
+  "versionCode": "20241130",
+  "zipUrl": "https://github.com/coomsn/box-xray-tproxy/releases/download/v2.1/box-xray-tproxy-v2.1.zip",
   "changelog": "https://github.com/coomsn/box-xray-tproxy/raw/main/CHANGELOG.md"
 }
