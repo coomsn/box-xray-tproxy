@@ -1,7 +1,5 @@
 #!/system/bin/sh
-#########################
-# box_tproxy Customization#
-#########################
+
 SKIPUNZIP=1
 ASH_STANDALONE=1
 unzip_path="/data/adb"
@@ -24,14 +22,14 @@ fi
 
 ui_print "- 正在释放文件"
 unzip -o "$ZIPFILE" 'box_tproxy/*' -d $unzip_path >&2
-unzip -j -o "$ZIPFILE" 'box_tproxy_service.sh' -d /data/adb/service.d >&2
+unzip -j -o "$ZIPFILE" 'box-xray-tproxy.sh' -d /data/adb/service.d >&2
 unzip -j -o "$ZIPFILE" 'uninstall.sh' -d $MODPATH >&2
 unzip -j -o "$ZIPFILE" "module.prop" -d $MODPATH >&2
 ui_print "- 正在设置权限"
 set_perm_recursive $MODPATH 0 0 0755 0644
 set_perm_recursive /data/adb/box_tproxy/ 0 3005 0755 0644
 set_perm_recursive /data/adb/box_tproxy/scripts/ 0 3005 0755 0700
-set_perm /data/adb/service.d/box_tproxy_service.sh 0 0 0755
+set_perm /data/adb/service.d/box-xray-tproxy.sh 0 0 0755
 set_perm $MODPATH/uninstall.sh 0 0 0755
 set_perm /data/adb/box_tproxy/scripts/ 0 0 0755
 ui_print "- 完成权限设置"
