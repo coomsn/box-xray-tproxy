@@ -60,7 +60,7 @@ if [ -f "${bin_box}" ]; then
   run_iptables_rules
   run_disable_quic
   ulimit -SHn 1000000
-  nohup busybox setuidgid ${box_user}:${box_group} ${bin_box} run -C ${config_dir} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
+  nohup busybox setuidgid ${box_user}:${box_group} ${bin_box} run -C ${box_confs_dir} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
   chmod +x ${bin_xray}
   chown root:net_admin ${bin_xray}
   export XRAY_LOCATION_ASSET="${xray_geos_dir}"
@@ -209,7 +209,7 @@ if [ "${crond_task}" = true ]; then
   if pgrep busybox crond > /dev/null; then
     kill -9 $(pgrep busybox crond)
   fi
-  echo '5 0,12 * * * touch /data/adb/modules/box_tproxy-module/disable && sleep 3 && rm /data/adb/modules/box_tproxy-module/disable' > ${crontab_file}
+  echo '5 0,12 * * * touch /data/adb/modules/box-xray-tproxy/disable && sleep 3 && rm /data/adb/modules/box-xray-tproxy/disable' > ${crontab_file}
   nohup busybox crond -c ${scripts_dir}/ > /dev/null 2>&1 &
   log Info "New task: $(busybox crontab -l -c ${scripts_dir}/)"
 else
@@ -261,7 +261,7 @@ description() {
 local symbol=$1
 local event=$2
 version
-prop_file="/data/adb/modules/box_tproxy-module/module.prop"
+prop_file="/data/adb/modules/box-xray-tproxy/module.prop"
 core_name="${chain_name}"
 current_time=$(date "+[%m.%d %H:%M]")
 sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
