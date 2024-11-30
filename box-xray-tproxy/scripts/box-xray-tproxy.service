@@ -66,9 +66,11 @@ if [ -f "${bin_box}" ]; then
   export XRAY_LOCATION_ASSET="${xray_geos_dir}"
   export XRAY_LOCATION_CONFDIR="${xray_confs_dir}"
   nohup busybox setuidgid ${xray_user}:${xray_group} ${bin_xray} > /dev/null 2>&1 &
+  am start -a android.intent.action.VIEW -n com.jozein.xedgepro/.ui.ActivityPerformAction --ei __0 111 --es __1 "代理已开启" >/dev/null 2>&1
   description "✔" "is running."
 else
   log Error "Binary ${bin_box} not found"
+  am start -a android.intent.action.VIEW -n com.jozein.xedgepro/.ui.ActivityPerformAction --ei __0 111 --es __1 "${bin_box##*/} not found" >/dev/null 2>&1
   exit 1
 fi
 echo "${bin_box##*/}:$(pidof ${bin_box})" > ${scripts_dir}/pid.txt
@@ -89,6 +91,7 @@ if [ -f "${scripts_dir}/pid.txt" ] ; then
   rm ${scripts_dir}/*.list
   rm ${scripts_dir}/pid.txt
   killall xray
+  am start -a android.intent.action.VIEW -n com.jozein.xedgepro/.ui.ActivityPerformAction --ei __0 111 --es __1 "代理已关闭" >/dev/null 2>&1
   find "${parent_dir}" -type f -name "*.log" ! -name "run.log" -exec rm -f {} +
 fi
 }
