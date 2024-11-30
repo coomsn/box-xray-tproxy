@@ -1,5 +1,5 @@
-id=box_tproxy-module
-name=box_tproxy4magisk
+id=box-xray-tproxy
+name=box-xray-tproxy
 version=v2.1
 versionCode=20241130
 author=Tony
