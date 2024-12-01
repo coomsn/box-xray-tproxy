@@ -1,4 +1,5 @@
 name: box-xray-tproxy-v2.1
+
 on:
   workflow_dispatch:
   push:
@@ -13,57 +14,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - uses: actions/checkout@v3
 
+      # Step 2: Set up GitHub token for authentication
+      - name: Set up GitHub token
+        run: echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+
+      # Step 3: Get the repository name
+      - name: Get repository name
+        id: get_repo_name
+        run: echo "REPO_NAME=$(basename $(git rev-parse --show-toplevel))" >> $GITHUB_ENV
+
+      # Step 4: Update update.json file
       - name: Update update.json
         run: |
-          # 提取 module.prop 文件中的 version 和 versionCode
           version=$(grep -oP 'version=\K[^ ]+' module.prop)
           versionCode=$(grep -oP 'versionCode=\K[^ ]+' module.prop)
 
-          # 生成 update.json 文件
           echo '{
             "version": "'"${version}"'",
             "versionCode": "'"${versionCode}"'",
-            "zipUrl": "https://github.com/coomsn/xray-tproxy/releases/download/'"${version}"'/box-xray-tproxy-'${version}'.zip",
-            "changelog": "https://github.com/coomsn/xray-tproxy/raw/main/CHANGELOG.md"
+            "zipUrl": "https://github.com/coomsn/${{ env.REPO_NAME }}/releases/download/'"${version}"'/box-xray-tproxy-'${version}'.zip",
+            "changelog": "https://github.com/coomsn/${{ env.REPO_NAME }}/raw/main/CHANGELOG.md"
           }' > update.json
 
+      # Step 5: Commit and push update.json
       - name: Commit and push update.json
         run: |
           git config --local user.name "coomsn"
           git config --local user.email "acstudycn@gmail.com"
           git add update.json
-          git commit --allow-empty -m "Update update.json for version $(grep -oP 'version=\K[^ ]+' module.prop)"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git commit -m "Update update.json for version $(grep -oP 'version=\K[^ ]+' module.prop)" || true
           git push -f origin main
 
+      # Step 6: Run the build.sh script
       - name: Run build.sh
         run: sh build.sh
 
+      # Step 7: Extract version from the filename of the zip file
       - name: Extract version from filename
         id: extract_version
         run: |
-          # Find the ZIP file and extract the version number from its name
           zip_file=$(ls box-xray-tproxy-v*.zip)
           version=$(echo "$zip_file" | sed -E 's/box-xray-tproxy-v(.*).zip/v\1/')
           echo "VERSION=${version}" >> $GITHUB_ENV
 
-      - name: Delete existing release
-        run: |
-          release_id=$(gh api -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/releases \
-            | jq '.[] | select(.tag_name == env.VERSION) | .id')
-          if [ -n "$release_id" ]; then
-            gh api -X DELETE /repos/${{ github.repository }}/releases/$release_id
-            echo "Deleted existing release with ID: $release_id"
-          fi
-          # Delete the tag if it exists
-          if git ls-remote --tags origin | grep -q "refs/tags/${{ env.VERSION }}$"; then
-            git push origin :refs/tags/${{ env.VERSION }}
-            echo "Deleted existing tag: ${{ env.VERSION }}"
-          fi
-
+      # Step 8: Read release notes from CHANGELOG.md
       - name: Read release notes from CHANGELOG.md
         id: get_release_notes
         run: |
@@ -72,6 +69,7 @@ jobs:
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      # Step 10: Upload the new release
       - name: Upload release
         uses: softprops/action-gh-release@v1
         if: ${{ success() }}
@@ -80,4 +78,6 @@ jobs:
           files: box-xray-tproxy-v*.zip
           body: ${{ env.RELEASE_NOTES }}
           prerelease: false
+          draft: false  # Ensure the release is not a draft
+          overwrite: true  # Ensure the existing release is overwritten
           generate_release_notes: false
