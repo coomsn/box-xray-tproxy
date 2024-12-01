@@ -24,7 +24,7 @@ start_inotifyd
 source ${scripts_dir}/box-xray-tproxy.service
 
 if [ ! -f "${module_dir}/disable" ]; then
-  log Info "The process is starting, please wait"
+  log Info "Module Enabled"
 else
-  log Warn "Please turn on the mask switch"
+  log Warn "Module Disabled"
 fi
