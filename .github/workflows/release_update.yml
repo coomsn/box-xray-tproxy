@@ -1,5 +1,4 @@
 name: box-xray-tproxy-v2.1
-
 on:
   workflow_dispatch:
   push:
@@ -16,58 +15,55 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 更新 update.json 文件
       - name: Update update.json
         run: |
+          # 提取 module.prop 文件中的 version 和 versionCode
           version=$(grep -oP 'version=\K[^ ]+' module.prop)
           versionCode=$(grep -oP 'versionCode=\K[^ ]+' module.prop)
 
+          # 生成 update.json 文件
           echo '{
             "version": "'"${version}"'",
             "versionCode": "'"${versionCode}"'",
-            "zipUrl": "https://github.com/coomsn/box-xray-tproxy/releases/download/'"${version}"'/box-xray-tproxy-'${version}'.zip",
-            "changelog": "https://github.com/coomsn/box-xray-tproxy/raw/main/CHANGELOG.md"
+            "zipUrl": "https://github.com/coomsn/xray-tproxy/releases/download/'"${version}"'/box-xray-tproxy-'${version}'.zip",
+            "changelog": "https://github.com/coomsn/xray-tproxy/raw/main/CHANGELOG.md"
           }' > update.json
 
-      # 提交并推送 update.json
       - name: Commit and push update.json
         run: |
           git config --local user.name "coomsn"
           git config --local user.email "acstudycn@gmail.com"
           git add update.json
-          git commit -m "Update update.json for version $(grep -oP 'version=\K[^ ]+' module.prop)" || true
+          git commit --allow-empty -m "Update update.json for version $(grep -oP 'version=\K[^ ]+' module.prop)"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git push -f origin main
 
-      # 执行 build.sh 脚本
       - name: Run build.sh
         run: sh build.sh
 
-      # 从 ZIP 文件中提取版本信息
       - name: Extract version from filename
         id: extract_version
         run: |
+          # Find the ZIP file and extract the version number from its name
           zip_file=$(ls box-xray-tproxy-v*.zip)
           version=$(echo "$zip_file" | sed -E 's/box-xray-tproxy-v(.*).zip/v\1/')
           echo "VERSION=${version}" >> $GITHUB_ENV
 
-      # 删除已有的 Release 和 Tag
-      - name: Delete existing release and tag
+      - name: Delete existing release
         run: |
           release_id=$(gh api -H "Accept: application/vnd.github+json" \
             /repos/${{ github.repository }}/releases \
             | jq '.[] | select(.tag_name == env.VERSION) | .id')
-
           if [ -n "$release_id" ]; then
-            echo "Deleting existing release with ID: $release_id"
             gh api -X DELETE /repos/${{ github.repository }}/releases/$release_id
+            echo "Deleted existing release with ID: $release_id"
           fi
-
+          # Delete the tag if it exists
           if git ls-remote --tags origin | grep -q "refs/tags/${{ env.VERSION }}$"; then
-            echo "Deleting existing tag: ${{ env.VERSION }}"
             git push origin :refs/tags/${{ env.VERSION }}
+            echo "Deleted existing tag: ${{ env.VERSION }}"
           fi
 
-      # 读取 CHANGELOG.md 文件作为发布说明
       - name: Read release notes from CHANGELOG.md
         id: get_release_notes
         run: |
@@ -76,7 +72,6 @@ jobs:
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      # 上传 ZIP 文件并创建 GitHub release
       - name: Upload release
         uses: softprops/action-gh-release@v1
         if: ${{ success() }}
