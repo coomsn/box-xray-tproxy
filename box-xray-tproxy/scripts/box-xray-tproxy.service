@@ -63,9 +63,7 @@ if [ -f "${bin_box}" ]; then
   nohup busybox setuidgid ${box_user}:${box_group} ${bin_box} run -C ${box_confs_dir} -D ${parent_dir}/binary/ > /dev/null 2>&1 &
   chmod +x ${bin_xray}
   chown root:net_admin ${bin_xray}
-  export XRAY_LOCATION_ASSET="${xray_geos_dir}"
-  export XRAY_LOCATION_CONFDIR="${xray_confs_dir}"
-  nohup busybox setuidgid ${xray_user}:${xray_group} ${bin_xray} > /dev/null 2>&1 &
+  nohup busybox setuidgid ${xray_user}:${xray_group} ${bin_xray} run -confdir ${xray_confs_dir} > /dev/null 2>&1 &
   am start -a android.intent.action.VIEW -n com.jozein.xedgepro/.ui.ActivityPerformAction --ei __0 111 --es __1 "代理已开启" >/dev/null 2>&1
   description "✔" "is running."
 else
@@ -106,8 +104,8 @@ ${3} -t mangle -N ${4}_EXTERNAL
 ${3} -t mangle -F ${4}_EXTERNAL
 ${3} -t mangle -N ${4}_LOCAL
 ${3} -t mangle -F ${4}_LOCAL
-${3} -t mangle -N DIVERT
-${3} -t mangle -F DIVERT
+${3} -t mangle -N DIVERTSV
+${3} -t mangle -F DIVERTSV
   
 # Create custom chain rules
 ${3} -t mangle -A ${4}_LOCAL -p udp --dport 53 -j MARK --set-mark ${fwmark}
@@ -162,12 +160,12 @@ esac
 ${3} -t mangle -I ${4}_LOCAL -m owner --gid-owner ${box_group} -j RETURN
 ${3} -t mangle -I ${4}_LOCAL -m owner --gid-owner ${xray_group} -j RETURN
 # Loopback prevention rules 2
-${3} -t mangle -A DIVERT -j MARK --set-mark "${fwmark}"
-${3} -t mangle -A DIVERT -j ACCEPT
+${3} -t mangle -A DIVERTSV -j MARK --set-mark "${fwmark}"
+${3} -t mangle -A DIVERTSV -j ACCEPT
 
 # Referencing custom chains
 ${3} -t mangle -A PREROUTING -j ${4}_EXTERNAL
-${3} -t mangle -I PREROUTING -p tcp -m socket -j DIVERT
+${3} -t mangle -I PREROUTING -p tcp -m socket -j DIVERTSV
 ${3} -t mangle -A OUTPUT -j ${4}_LOCAL
 }
 
@@ -186,15 +184,15 @@ ${1} route del local default dev lo table ${2}
 ${1} route flush table ${2}
 # First, delete the reference chain, otherwise the custom chain cannot be deleted.
 ${3} -t mangle -D PREROUTING -j ${4}_EXTERNAL
-${3} -t mangle -D PREROUTING -p tcp -m socket -j DIVERT
+${3} -t mangle -D PREROUTING -p tcp -m socket -j DIVERTSV
 ${3} -t mangle -D OUTPUT -j ${4}_LOCAL
 # Secondly, delete the custom rules of the custom chain.
 ${3} -t mangle -F ${4}_EXTERNAL
-${3} -t mangle -F DIVERT
+${3} -t mangle -F DIVERTSV
 ${3} -t mangle -F ${4}_LOCAL
 # Finally, delete the custom chain.
 ${3} -t mangle -X ${4}_EXTERNAL
-${3} -t mangle -X DIVERT
+${3} -t mangle -X DIVERTSV
 ${3} -t mangle -X ${4}_LOCAL
 }
 
@@ -271,3 +269,12 @@ current_time=$(date "+[%m.%d %H:%M]")
 sed -i "/description/c\description=${current_time} ${symbol} ${core_name} ${version} ${network_mode} ${event}" "${prop_file}"
 }
 # {version2.1}
+
+case "$1" in
+    enable)
+        start_tproxy
+        ;;
+    disable)
+        stop_tproxy
+        ;;
+esac
