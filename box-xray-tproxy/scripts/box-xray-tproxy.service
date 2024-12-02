@@ -79,6 +79,9 @@ fi
 
 # Function to stop the proxy
 stop_tproxy() {
+if ! pidof "${bin_box}" >/dev/null 2>&1; then
+    exit 1
+fi
 if [ -f "${scripts_dir}/pid.txt" ] ; then
   chain_name=$(awk -F ':' 'NR==1 {print $1}' ${scripts_dir}/pid.txt)
   run_del_iptables_rules > /dev/null 2>&1

@@ -5,7 +5,7 @@ scripts_dir=$(dirname ${scripts})
 module_dir="/data/adb/modules/box-xray-tproxy"
 # Environment variable settings
 export PATH="/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH"
-
+source ${scripts_dir}/box-xray-tproxy.service
 proxy_service() {
 if [ ! -f "${module_dir}/disable" ]; then
   log Info "Module Enabled"
