@@ -31,4 +31,4 @@ start_inotifyd() {
 proxy_service
 start_inotifyd
 
-# {version:2.1}
+# {version2.2}

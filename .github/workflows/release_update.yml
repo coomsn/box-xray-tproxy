@@ -1,4 +1,4 @@
-name: box-xray-tproxy-v2.1
+name: box-xray-tproxy-v2.2
 
 on:
   workflow_dispatch:
